@@ -9,7 +9,7 @@ app = faust.App(
 
 greetings_topic = app.topic('stringies', value_serializer='raw')
 
-images_topic = app.topic('images', value_serializer='raw')
+images_topic = app.topic('images', paritions=2, value_serializer='raw')
 
 
 @app.agent(images_topic)
