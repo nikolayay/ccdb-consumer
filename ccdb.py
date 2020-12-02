@@ -1,17 +1,24 @@
-import faust
 import numpy as np
+import faust
 import time
+import torch
+import cv2
+
+from facenet_pytorch import MTCNN
+from PIL import Image, ImageDraw
+
 
 """ 
-TODO change names to not be explicit
-TODO scale up boxes to run pytorch + GPUs yeehaw
-     run two workers
 TODO autoscaling group for worker nodes
 TODO figure out deployment
 """
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print('Running on device: {}'.format(device))
+mtcnn = MTCNN(keep_all=True, device=device)
+
 app = faust.App(
-    'cum-world',
+    'frames',
     broker='kafka://172.31.76.215:9092',
 )
 
@@ -20,7 +27,7 @@ class Frame(faust.Record, serializer='json'):
     frame: np.ndarray
 
 
-images_topic = app.topic('slags-3', value_type=Frame)
+frames_topic = app.topic('frames', value_type=Frame)
 
 
 # @app.agent(agent_frame_sink)
@@ -30,12 +37,28 @@ images_topic = app.topic('slags-3', value_type=Frame)
 #         print([frame.index for frame in o_frames])
 
 
-@app.agent(images_topic, concurrency=3)
-async def images(stream):
-    async for frame in stream:
+@app.agent(frames_topic)
+async def frames(stream):
+    async for frame_data in stream:
 
         #todo stream processing here
-        print(frame.index)
+        print(frame_data.index)
+
+        frame = np.asarray(frame_data.frame)
+
+        boxes, _ = mtcnn.detect(frame)
+
+        if (boxes is None):
+            yield frame.resize((1920, 1080), Image.BILINEAR)
+
+        frame_draw = frame.copy()
+        draw = ImageDraw.Draw(frame_draw)
+
+        for box in boxes:
+            draw.rectangle(box.tolist(), outline=(255, 0, 0), width=6)
+
+        # todo finish this
+        yield frame_draw.resize((1920, 1080), Image.BILINEAR)
         #print(frames)
         # o_frames = sorted(frames, key = lambda i: i.index)
         # print([frame.index for frame in o_frames])
