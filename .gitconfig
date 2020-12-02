@@ -1,0 +1,7 @@
+# This is Git's per-user configuration file.
+[user]
+	name = nikolayay
+	password = Edavandalsosal228
+# Please adapt and uncomment the following lines:
+#	name = nikky ec2
+#	email = ec2-user@ip-172-31-87-216.ec2.internal
